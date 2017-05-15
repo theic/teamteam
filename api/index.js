@@ -45,7 +45,6 @@ router.post('/login', (req, res) => {
 
             if (u !== null) {
                 // req.session.email = req.body.email;
-
                 res.send({
                     message: 'User successfully loggedIn.',
                     userid: u._id,
@@ -54,7 +53,6 @@ router.post('/login', (req, res) => {
             } else {
                 users.insert({email: req.body.email, password: req.body.password}, {}, (e, u) => {
                     // req.session.email = req.body.email;
-
                     res.send({
                         message: 'New user created',
                         userid: u._id,
