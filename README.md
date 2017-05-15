@@ -1,3 +1,3 @@
 # TeamTeam
 
-Домик для TeamTeam. 
+Домик для TeamTeam.
