@@ -1,56 +1,70 @@
-var express = require('express');
-var path = require('path');
-var favicon = require('serve-favicon');
-var logger = require('morgan');
-var cookieParser = require('cookie-parser');
-var bodyParser = require('body-parser');
-const db = require('monk')('localhost/teamteam');
+const express = require('express')
+const path = require('path')
+const favicon = require('serve-favicon')
+const cookieParser = require('cookie-parser')
+const bodyParser = require('body-parser')
 
-var app = express();
+const db = require('./db/init')
 
-//Make our db accessible to our router
-app.use(function (req, res, next) {
-    req.db = db;
-    next();
-});
+const mongoose = require('mongoose')
+const User = mongoose.model('User')
+const Task = mongoose.model('Task')
+const Storage = mongoose.model('Storage')
 
-session = require('express-session');
+const app = express()
+
+const session = require('express-session')
+const MongoStore = require('connect-mongo')(session)
 app.use(session({
-    secret: '2C44-4D44-WppQ38S',
+    secret: 'raining-dicks',
+    store: new MongoStore({
+        mongooseConnection: mongoose.connection
+    }),
     resave: true,
     saveUninitialized: true
-}));
+}))
 
-// view engine setup
-app.set('views', path.join(__dirname, 'views'));
-// app.set('view engine', 'jade');
+app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')))
+app.use(bodyParser.json())
+app.use(bodyParser.urlencoded({extended: false}))
+app.use(cookieParser())
+app.use(express.static(path.join(__dirname, 'public')))
 
-// uncomment after placing your favicon in /public
-app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
-app.use(logger('dev'));
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({extended: false}));
-app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
+const telegram = require('./telegram/tg-init')
 
-app.use(require('./api/index'));
+app.listen(3000, _ => {
+    console.log('Listening on port 3000!')
 
-// catch 404 and forward to error handler
-app.use((req, res, next) => {
-    var err = new Error('Not Found');
-    err.status = 404;
-    next(err);
-});
+    // User.find({}, (e, arr) => {
+    //     console.log('Current users:')
+    //     arr.map(u => {
+    //         console.log(u.email)
+    //     })
+    // })
+    //
+    // Task.find({}, (e, arr) => {
+    //     console.log('Current tasks:')
+    //     arr.map(u => {
+    //         console.log(u.title)
+    //     })
+    // })
 
-// error handler
-app.use((err, req, res, next) => {
-    // set locals, only providing error in development
-    res.locals.message = err.message;
-    res.locals.error = req.app.get('env') === 'development' ? err : {};
+    setTimeout(_ => {
+        Storage.find({}, (err, value) => {
+            console.log('Current state: ', value)
+        })
+    }, 500)
 
-    // render the error page
-    res.status(err.status || 500);
-    res.render('error');
-});
+    // telegram.getState().then(r => {
+    //     console.log(r)
+    // }).catch(e => console.error(e))
+})
 
-module.exports = app;
+let user_routes = require('./api/index')
+
+app.use('/', user_routes)
+
+app.get('*', (req, res, next) => {
+    res.json({isok: true})
+    // res.sendFile(path.join(__dirname, './public/src/teamteam-app/index.html'))
+})

@@ -1,71 +1,70 @@
-var express = require('express');
-var path = require('path');
-var router = express.Router();
+const express = require('express')
+const path = require('path')
+const router = express.Router()
+const mongoose = require('mongoose')
+const User = mongoose.model('User')
+const Task = mongoose.model('Task')
+const telegram = require('../telegram/tg-init')
 
-/* GET home page. */
-router.get('/', function (req, res, next) {
-    // var db = req.db;
-    // const users = db.get('users');
-    // users.remove({}); // Для дебаггинга
+const app = express()
 
-    // users.insert({email: 'teamteam@gmail.com', password: '123456'});
-    // users.find({}).then(docs => {
-    //     console.log('=========== ', docs);
-    // });
+const auth = function (req, res, next) {
+    if (req.isAuthenticated())
+        return next()
+    else {
+        return res.sendStatus(401)
+            .json({error: 'Авторизуйся потом выебуйся.'})
+    }
+}
 
-    res.sendFile(path.join(__dirname, '../public/src/teamteam-app/index.html'));
-});
+router.use((req, res, next) => {
 
-// Authentication and Authorization Middleware
-var auth = function (req, res, next) {
-    if (req.session && req.session.id === req.headers.sid)
-        return next();
-    else
-        return res.sendStatus(401);
-};
+    // log each request to the console
+    console.log(req.method, req.url)
+    console.log('Session: ', req.session)
+
+    // continue doing what we were doing and go to the route
+    next()
+})
 
 router.post('/logout', (req, res) => {
-    req.session.destroy();
-    res.send("logout success!");
-});
+    // req.logout();
+    telegram.logOut().then(r => {
+        res.status(200).json({
+            status: r
+        })
+    }).catch(e => console.error('Попытка выхода: ', e))
+})
 
 router.post('/login', (req, res) => {
+    if (req.body.code) {
+        console.log('Отправляем телефон ', req.session.phone, ' хэш ', req.session.phone_code_hash, ' и код ', req.body.code)
 
-    if (!req.body.email || !req.body.password) {
+        req.session.code = req.body.code
+        telegram.signIn(req.session.phone,
+            req.session.phone_code_hash,
+            req.body.code).then(r => {
+            res.json(r)
+        }).catch(e => console.error(e))
 
-        res.send({
-            message: 'No user data provided.',
-            userid: null,
-            sid: null
-        });
-    } else {
-        let db = req.db;
-        let users = db.get('users');
-        users.findOne({email: req.body.email, password: req.body.password}, {}, (e, u) => {
+    } else if (req.body.phone) {
+        const p = '7' + req.body.phone.replace(/[^0-9]/g, '')
+        console.log('Отправляем номер: ', p)
 
-            if (u !== null) {
-                // req.session.email = req.body.email;
-                res.send({
-                    message: 'User successfully loggedIn.',
-                    userid: u._id,
-                    sid: req.sessionid
-                });
-            } else {
-                users.insert({email: req.body.email, password: req.body.password}, {}, (e, u) => {
-                    // req.session.email = req.body.email;
-                    res.send({
-                        message: 'New user created',
-                        userid: u._id,
-                        sid: req.sessionid
-                    });
-                });
-            }
-        });
+        telegram.sendCode(p).then(r => {
+            req.session.phone_code_hash = r.phone_code_hash
+            req.session.phone = p
+            res.json(r)
+        }).catch(e => console.error(e))
     }
-});
+})
 
-router.post('/content', auth, function (req, res) {
-    res.send({msg: 'Nice to see you!'});
-});
+router.post('/test', (req, res) => {
+    telegram.getState().then(r => {
+        console.log(r)
+    }).catch(e => console.error(e))
 
-module.exports = router;
+    res.sendStatus(200)
+})
+
+module.exports = router
