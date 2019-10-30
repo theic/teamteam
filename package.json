@@ -17,7 +17,7 @@
     "eslint-plugin-html": "^1.7.0",
     "express": "^4.15.2",
     "express-session": "^1.15.2",
-    "mongoose": "^4.9.9",
+    "mongoose": "^5.7.7",
     "mongodb": "^2.2.26",
     "morgan": "^1.8.1",
     "monk": "^4.0.0",
